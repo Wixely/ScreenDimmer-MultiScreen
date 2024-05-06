@@ -1,6 +1,6 @@
 ﻿namespace Augustine.ScreenDimmer
 {
-    internal partial class ScreenDimmer
+    public partial class ScreenDimmer
     {
         /// <summary>
         /// Required designer variable.

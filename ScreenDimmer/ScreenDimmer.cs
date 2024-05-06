@@ -7,14 +7,15 @@ using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Augustine.ScreenDimmer
 {
-    internal partial class ScreenDimmer : Form
-    {
+     public partial class ScreenDimmer : Form
+     {
         #region private properties
         /// <summary>
         /// Configuration file path.
@@ -26,7 +27,7 @@ namespace Augustine.ScreenDimmer
         /// The overlay window.
         /// </summary>
         //private Form overlayWindow;
-        private Dictionary<string, Form> overlayWindows;
+        public Dictionary<string, Overlay> overlayWindows;
         /// <summary>
         /// The about box.
         /// </summary>
@@ -93,7 +94,8 @@ namespace Augustine.ScreenDimmer
         {
             InitializeComponent();
             initOverlayWindow();
-            
+
+
             aboutBox = new AboutBox1();
             helpWindow = new HelpWindow();
             configuration = new Configuration();
@@ -107,7 +109,10 @@ namespace Augustine.ScreenDimmer
             notifyIcon1.Icon = IconMediumBright;
             Icon = IconMediumBright32x32;
             Text = string.Format("Screen Dimmer {0}", Assembly.GetExecutingAssembly().GetName().Version.ToString());
+
             setBrightness(trackBarBrightness.Value);
+
+            MQTTService.Connect(this);
         }
 
         /// <summary>
@@ -131,7 +136,12 @@ namespace Augustine.ScreenDimmer
                     //cb.Visible = screens.Contains(scr.DeviceName);
                     overlayWindows[scr.DeviceName].Visible = screens.Contains(scr.DeviceName);
                     setBrightness(trackBarBrightness.Value);
+
+                    overlayWindows[scr.DeviceName].UpdateMqtt();
                 };
+
+                overlayWindows[screen.DeviceName].cbReference = checkbox;
+
                 tableLayoutPanel2.Controls.Add(checkbox);
             }
         }
@@ -144,13 +154,13 @@ namespace Augustine.ScreenDimmer
             overlayWindows = Screen.AllScreens.ToDictionary(k => k.DeviceName, 
                 (v) => {
 
-                    return new Form()
+                    return (new Overlay()
                     {
                         FormBorderStyle = System.Windows.Forms.FormBorderStyle.None,
                         ShowInTaskbar = false,
                         Visible = false,
-                        Tag = v
-                    };
+                        Tag = v,
+                    }).Init();
                 }
             );
 
