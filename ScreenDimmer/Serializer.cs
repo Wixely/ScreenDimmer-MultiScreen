@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,16 +19,8 @@ namespace Augustine.ScreenDimmer
 
             try
             {
-                XmlDocument xmlDocument = new XmlDocument();
-                DataContractSerializer serializer = new DataContractSerializer(serializableObject.GetType());
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    serializer.WriteObject(stream, serializableObject);
-                    stream.Position = 0;
-                    xmlDocument.Load(stream);
-                    xmlDocument.Save(fileName);
-                    stream.Close();
-                }
+                var data = JsonConvert.SerializeObject(serializableObject, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText($"{fileName}.json", data);
             }
             catch (Exception ex)
             {
@@ -39,32 +32,15 @@ namespace Augustine.ScreenDimmer
         {
             if (string.IsNullOrEmpty(fileName)) { return default(T); }
 
-            T objectOut = default(T);
-
             try
             {
-                XmlDocument xmlDocument = new XmlDocument();
-                xmlDocument.Load(fileName);
-                string xmlString = xmlDocument.OuterXml;
-
-                using (StringReader read = new StringReader(xmlString))
-                {
-                    DataContractSerializer serializer = new DataContractSerializer(typeof(T));
-                   using (XmlReader reader = new XmlTextReader(read))
-                    {
-                        objectOut = (T)serializer.ReadObject(reader);
-                        reader.Close();
-                    }
-
-                    read.Close();
-                }
+                var data = File.ReadAllText($"{fileName}.json");
+                return JsonConvert.DeserializeObject<T>(data);
             }
             catch (Exception ex)
             {
-                throw ex;
+                return default(T);
             }
-
-            return objectOut;
         }
     }
 }

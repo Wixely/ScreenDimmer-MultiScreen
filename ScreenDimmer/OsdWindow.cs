@@ -20,9 +20,9 @@ namespace Augustine.ScreenDimmer
         private byte targetOpacity; // 0 - 255
         private DateTime effectStartTime;
         private bool isDisplaying = false;
-        private Screen relatedScreen;
+        private ScreenExtended relatedScreen;
 
-        public OsdWindow(Screen screen)
+        public OsdWindow(ScreenExtended screen)
         {
             relatedScreen = screen;
             InitializeComponent();
@@ -40,7 +40,7 @@ namespace Augustine.ScreenDimmer
                 Font = font;
                 BackColor = backcolor;
                 ForeColor = textcolor;
-                Location = new Point(relatedScreen.Bounds.X+20, relatedScreen.Bounds.Y + 20);
+                Location = new Point(relatedScreen.Screen.Bounds.X+20, relatedScreen.Screen.Bounds.Y + 20);
                 targetOpacity = opacity;
 
                 isDisplaying = true;

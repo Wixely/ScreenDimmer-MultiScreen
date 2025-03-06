@@ -1,21 +1,27 @@
-﻿using System;
+﻿using HiveMQtt.MQTT5.Types;
+using Newtonsoft.Json;
+using NLog.LayoutRenderers.Wrappers;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Management;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Button;
 
 namespace Augustine.ScreenDimmer
 {
-     public partial class ScreenDimmer : Form
-     {
+    public partial class ScreenDimmer : Form
+    {
         #region private properties
         /// <summary>
         /// Configuration file path.
@@ -31,7 +37,7 @@ namespace Augustine.ScreenDimmer
         /// <summary>
         /// The about box.
         /// </summary>
-        private AboutBox1 aboutBox;
+        private AboutBox aboutBox;
         /// <summary>
         /// The help window ("show hotkeys" window).
         /// </summary>
@@ -40,7 +46,7 @@ namespace Augustine.ScreenDimmer
         /// The brightness OSD.
         /// </summary>
         //private OsdWindow osdWindow;
-        private Dictionary<string,OsdWindow> osdWindows;
+        private Dictionary<string, OsdWindow> osdWindows;
 
         /// <summary>
         /// Contains all the settings.
@@ -63,7 +69,7 @@ namespace Augustine.ScreenDimmer
         /// State variable to decide to refresh the screen list or not.
         /// </summary>
         private int numberOfScreens = -1;
-        
+
         // transition effect
         /// <summary>
         /// The total change in brightness track bar value.
@@ -78,7 +84,7 @@ namespace Augustine.ScreenDimmer
         /// </summary>
         private DateTime fadeStartTime;
         #endregion
-        
+
         #region static members
         /// <summary>
         /// Icon to use in system tray.
@@ -90,16 +96,23 @@ namespace Augustine.ScreenDimmer
         public static readonly Icon IconMediumBright32x32 = TextIcon.CreateTextIcon("\uE286", Color.White, "", 32);
         #endregion
 
+        public float GetCurrentBrightness() => configuration.CurrentBrightness;
+        public void SetCurrentBrightness(float brightness) {
+            var managed = Math.Min(trackBarBrightness.Maximum, Math.Max(trackBarBrightness.Minimum, (decimal)brightness));
+            this.trackBarBrightness.Value = (int)managed;
+        }
+
         public ScreenDimmer()
         {
             InitializeComponent();
             initOverlayWindow();
 
 
-            aboutBox = new AboutBox1();
+            aboutBox = new AboutBox();
             helpWindow = new HelpWindow();
             configuration = new Configuration();
-            osdWindows = Screen.AllScreens.ToDictionary(k=>k.DeviceName, v=>new OsdWindow(v));
+            osdWindows = ScreenExtended.AllScreens.ToDictionary(k=>k.DeviceName, v=>new OsdWindow(v));
+
 
             // has to be in this order!
             initScreenOptions();
@@ -108,7 +121,7 @@ namespace Augustine.ScreenDimmer
 
             notifyIcon1.Icon = IconMediumBright;
             Icon = IconMediumBright32x32;
-            Text = string.Format("Screen Dimmer {0}", Assembly.GetExecutingAssembly().GetName().Version.ToString());
+            Text = string.Format("ScreenDimmer-MultiScreen {0}", AboutBox.version.ToString());
 
             setBrightness(trackBarBrightness.Value);
 
@@ -118,22 +131,26 @@ namespace Augustine.ScreenDimmer
         /// <summary>
         /// Creates checkboxes for each screen, allows users to only dim certain screens.
         /// </summary>
+        /// 
+        public Panel checkboxPanel = new Panel();
         private void initScreenOptions()
         {
-            foreach (var screen in Screen.AllScreens)
+            tableLayoutPanel2.Controls.Add(checkboxPanel);
+            var top = 10;
+            var left = 10;
+            var checkboxSize = 40;
+            var ratio = 0.03f;
+            foreach (var screen in ScreenExtended.AllScreens)
             {
-                var checkbox = new CheckBox()
+                var checkbox = new CheckboxButton()
                 {
-                    Text = screen.DeviceName,
                     Tag = screen
                 };
                 checkbox.CheckedChanged += (object sender, EventArgs e) =>
                 {
-                    var cb = sender as CheckBox;
-                    var scr = cb.Tag as Screen;
-                    //osdWindows[scr.DeviceName].Visible
+                    var cb = sender as CheckboxButton;
+                    var scr = cb.Tag as ScreenExtended;
                     var screens = getEnabledScreenList();
-                    //cb.Visible = screens.Contains(scr.DeviceName);
                     overlayWindows[scr.DeviceName].Visible = screens.Contains(scr.DeviceName);
                     setBrightness(trackBarBrightness.Value);
 
@@ -142,7 +159,14 @@ namespace Augustine.ScreenDimmer
 
                 overlayWindows[screen.DeviceName].cbReference = checkbox;
 
-                tableLayoutPanel2.Controls.Add(checkbox);
+                checkbox.BackColor = Color.Transparent;
+
+
+                checkbox.Top = screen.CheckboxBounds.Y;
+                checkbox.Left = screen.CheckboxBounds.X;
+                checkbox.Width = screen.CheckboxBounds.Width;
+                checkbox.Height = screen.CheckboxBounds.Height;
+                checkboxPanel.Controls.Add(checkbox);
             }
         }
         
@@ -151,7 +175,7 @@ namespace Augustine.ScreenDimmer
         /// </summary>
         private void initOverlayWindow()
         {
-            overlayWindows = Screen.AllScreens.ToDictionary(k => k.DeviceName, 
+            overlayWindows = ScreenExtended.AllScreens.ToDictionary(k => k.DeviceName, 
                 (v) => {
 
                     return (new Overlay()
@@ -168,7 +192,7 @@ namespace Augustine.ScreenDimmer
             {
                 window.Value.Load += (object sender, EventArgs e) => {
                     var overlay = (sender as Form);
-                    var screen = overlay.Tag as Screen;
+                    var screen = overlay.Tag as ScreenExtended;
                     overlay.Top = screen.Bounds.Top;
                     overlay.Left = screen.Bounds.Left;
                     overlay.Width = screen.Bounds.Width;
@@ -375,7 +399,7 @@ namespace Augustine.ScreenDimmer
             var enabledScreenList = getEnabledScreenList();
             foreach (var window in overlayWindows)
             {
-                var scr = window.Value.Tag as Screen;
+                var scr = window.Value.Tag as ScreenExtended;
                 if (enabledScreenList.Contains(scr.DeviceName))
                 {
                     NativeMethods.SetLayeredWindowAttributes(window.Value.Handle, 0, (byte)(255 - (brightness / 100f) * 255),
@@ -552,6 +576,7 @@ namespace Augustine.ScreenDimmer
         private void saveConfiguration()
         {
             uiToConfig();
+            saveBrightnesstoMqtt();
             configuration.SaveToFile(confFile);
         }
 
@@ -619,29 +644,33 @@ namespace Augustine.ScreenDimmer
 
 
             var EnabledScreens = new List<string>();
-            foreach (var control in tableLayoutPanel2.Controls)
+            foreach (var control in checkboxPanel.Controls)
             {
-                var cb = control as CheckBox;
+                var cb = control as CheckboxButton;
                 if (cb != null && cb.Enabled)
                 {
-                    var scr = cb.Tag as Screen;
+                    var scr = cb.Tag as ScreenExtended;
                     if (configuration.EnabledScreens?.Contains(scr.DeviceName)==true)
                     {
-                        cb.Checked = true;
+                        cb.SetEnable();
                     }
                 }
             }
+
+            MQTTService.ConfigHost = configuration.MQTTHostName;
+            MQTTService.ConfigUserName = configuration.MQTTUsername;
+            MQTTService.ConfigPassword = configuration.MQTTPassword;
         }
 
         private List<string> getEnabledScreenList()
         {
             var EnabledScreens = new List<string>();
-            foreach (var control in tableLayoutPanel2.Controls)
+            foreach (var control in checkboxPanel.Controls)
             {
-                var cb = control as CheckBox;
+                var cb = control as CheckboxButton;
                 if (cb != null && cb.Checked)
                 {
-                    var scr = cb.Tag as Screen;
+                    var scr = cb.Tag as ScreenExtended;
                     EnabledScreens.Add(scr.DeviceName);
                 }
             }
@@ -702,7 +731,7 @@ namespace Augustine.ScreenDimmer
         /// <param name="e"></param>
         private void checkBoxEnforceOnTop_CheckedChanged(object sender, EventArgs e)
         {
-            bool isEnabled = ((CheckBox)sender).Checked;
+            bool isEnabled = ((System.Windows.Forms.CheckBox)sender).Checked;
             numericUpDown1.Enabled = isEnabled;
             label1.Enabled = isEnabled;
             if (isEnabled)
@@ -769,12 +798,24 @@ namespace Augustine.ScreenDimmer
         {
             foreach (var window in overlayWindows)
             {
-                var screen = window.Value.Tag as Screen;
+                var screen = window.Value.Tag as ScreenExtended;
                 window.Value.Top = screen.Bounds.Top;
                 window.Value.Left = screen.Bounds.Left;
                 window.Value.Width = screen.Bounds.Width;
                 window.Value.Height = screen.Bounds.Height;
             }
+        }
+
+        public void saveBrightnesstoMqtt()
+        {
+            var brightnessSensor = new HAValue()
+            {
+                brightness = GetCurrentBrightness()
+            };
+
+            var topic = $"{MQTTService.AppBase}/{brightnessSensor.device.name}/{brightnessSensor.cmd_t.Trim('~')}";
+                
+            var publishResult = MQTTService.client.PublishAsync(topic, JsonConvert.SerializeObject(brightnessSensor.brightness));
         }
     }
 }

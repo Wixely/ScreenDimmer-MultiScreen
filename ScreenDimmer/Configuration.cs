@@ -73,6 +73,15 @@ namespace Augustine.ScreenDimmer
         [DataMember(Name = "EnabledScreens")]
         internal List<string> EnabledScreens;
 
+        [DataMember(Name = "MQTTHostName")]
+        internal string MQTTHostName;
+
+        [DataMember(Name = "MQTTUsername")]
+        internal string MQTTUsername;
+
+        [DataMember(Name = "MQTTPassword")]
+        internal string MQTTPassword;
+
         internal Configuration()
         {
             HotKeyDim = new GlobalHotKey();
@@ -96,7 +105,7 @@ namespace Augustine.ScreenDimmer
         internal void LoadDefault()
         {
             CurrentBrightness = 70;
-            EnabledScreens = Screen.AllScreens.Select(o => o.DeviceName).ToList();
+            EnabledScreens = ScreenExtended.AllScreens.Select(o => o.DeviceName).ToList();
             IsZeroBrightness = true;
             IsEnforceOnTop = false;
             IsDebug = false;
