@@ -142,7 +142,15 @@ namespace Augustine.ScreenDimmer
                 scr.CheckboxBounds.Height = checkboxSize;
             }
 
-            return screens;
+            return screens
+                .OrderBy(s => s.CheckboxBounds.GridY)
+                .ThenBy(s => s.CheckboxBounds.GridX)
+                .ThenBy(s => s.Bounds.X)
+                .ThenBy(s => s.Bounds.Y)
+                .ThenBy(s => s.Bounds.Width)
+                .ThenBy(s => s.Bounds.Height)
+                .ThenBy(s => s.MODeviceID ?? string.Empty)
+                .ToList();
         }
         public override string ToString()
         {
