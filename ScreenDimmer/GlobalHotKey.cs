@@ -97,11 +97,19 @@ namespace Augustine.ScreenDimmer
         }
 
         public static bool operator ==(GlobalHotKey a, GlobalHotKey b) {
+            if (ReferenceEquals(a, b))
+            {
+                return true;
+            }
+            if (a is null || b is null)
+            {
+                return false;
+            }
             return a.GetHashCode() == b.GetHashCode();
         }
 			
 		public static bool operator !=(GlobalHotKey a, GlobalHotKey b) {
-            return a.GetHashCode() != b.GetHashCode();
+            return !(a == b);
         }
 
         public override bool Equals(object obj)

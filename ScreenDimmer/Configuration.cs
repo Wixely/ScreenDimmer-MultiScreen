@@ -84,19 +84,31 @@ namespace Augustine.ScreenDimmer
         [DataMember(Name = "MQTTPassword")]
         internal string MQTTPassword;
 
+        private void EnsureHotKeysInitialized()
+        {
+            HotKeyDim ??= new GlobalHotKey();
+            HotKeyBrighten ??= new GlobalHotKey();
+            HotKeyIncreaseBrightness ??= new GlobalHotKey();
+            HotKeyDecreaseBrightness ??= new GlobalHotKey();
+            HotKeyForceOnTop ??= new GlobalHotKey();
+            HotKeyHalt ??= new GlobalHotKey();
+            ScreenToggleHotKeys ??= new List<GlobalHotKey>();
+        }
+
+        private void EnsureConfigurationState()
+        {
+            EnsureHotKeysInitialized();
+            EnabledScreens ??= new List<string>();
+        }
+
         internal Configuration()
         {
-            HotKeyDim = new GlobalHotKey();
-            HotKeyBrighten = new GlobalHotKey();
-            HotKeyIncreaseBrightness = new GlobalHotKey();
-            HotKeyDecreaseBrightness = new GlobalHotKey();
-            HotKeyForceOnTop = new GlobalHotKey();
-            HotKeyHalt = new GlobalHotKey();
-            ScreenToggleHotKeys = new List<GlobalHotKey>();
+            EnsureConfigurationState();
         }
 
         private void setHotkeyDescriptions()
         {
+            EnsureHotKeysInitialized();
             HotKeyDim.SetDescription("Dim (minimum brightness)");
             HotKeyBrighten.SetDescription("Brighten (maximum brightness)");
             HotKeyIncreaseBrightness.SetDescription("Increase Brightness");
@@ -111,14 +123,14 @@ namespace Augustine.ScreenDimmer
 
         private void buildScreenToggleHotKeys()
         {
+            EnsureHotKeysInitialized();
             ScreenToggleHotKeys = new List<GlobalHotKey>();
             var supportedScreenCount = Math.Min(ScreenExtended.AllScreens.Count, 12);
             for (int i = 0; i < supportedScreenCount; i++)
             {
                 var key = (Keys)((int)Keys.F13 + i);
                 ScreenToggleHotKeys.Add(new GlobalHotKey(
-                    KeyModifiers.NONE,
-                    //KeyModifiers.MOD_WIN,
+                     KeyModifiers.NONE,
                     key,
                     $"Toggle Screen {i + 1}"));
             }
@@ -126,6 +138,7 @@ namespace Augustine.ScreenDimmer
 
         internal void LoadDefault()
         {
+            EnsureConfigurationState();
             CurrentBrightness = 70;
             EnabledScreens = ScreenExtended.AllScreens.Select(o => o.DeviceName).ToList();
             IsZeroBrightness = true;
@@ -155,6 +168,7 @@ namespace Augustine.ScreenDimmer
             {
                 throw new Exception("Cannot parse configuration from file.", ex);
             }
+            deserialized.EnsureConfigurationState();
             // For the purpose of robustness. Non-positive fade duration will cause trouble.
             if (deserialized.FadeDuration < 1)
             {
