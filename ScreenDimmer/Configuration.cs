@@ -70,7 +70,14 @@ namespace Augustine.ScreenDimmer
             set { HotKeyHalt = GlobalHotkeyParser.Parse(value); } }
         internal GlobalHotKey HotKeyHalt;
 
+        [DataMember(Name = "ScreenToggleHotKeys")]
+        private List<string> screenToggleHotKeys
+        {
+            get { return ScreenToggleHotKeys?.Select(o => o.ToString()).ToList(); }
+            set { ConfiguredScreenToggleHotKeys = value ?? new List<string>(); }
+        }
         internal List<GlobalHotKey> ScreenToggleHotKeys;
+        internal List<string> ConfiguredScreenToggleHotKeys;
 
         [DataMember(Name = "EnabledScreens")]
         internal List<string> EnabledScreens;
@@ -93,6 +100,7 @@ namespace Augustine.ScreenDimmer
             HotKeyForceOnTop ??= new GlobalHotKey();
             HotKeyHalt ??= new GlobalHotKey();
             ScreenToggleHotKeys ??= new List<GlobalHotKey>();
+            ConfiguredScreenToggleHotKeys ??= new List<string>();
         }
 
         private void EnsureConfigurationState()
@@ -124,16 +132,34 @@ namespace Augustine.ScreenDimmer
         private void buildScreenToggleHotKeys()
         {
             EnsureHotKeysInitialized();
+            var configuredHotkeys = ConfiguredScreenToggleHotKeys.ToList();
             ScreenToggleHotKeys = new List<GlobalHotKey>();
             var supportedScreenCount = Math.Min(ScreenExtended.AllScreens.Count, 12);
             for (int i = 0; i < supportedScreenCount; i++)
             {
-                var key = (Keys)((int)Keys.F13 + i);
-                ScreenToggleHotKeys.Add(new GlobalHotKey(
-                     KeyModifiers.NONE,
-                    key,
-                    $"Toggle Screen {i + 1}"));
+                ScreenToggleHotKeys.Add(createScreenToggleHotKey(i, configuredHotkeys.ElementAtOrDefault(i)));
             }
+            ConfiguredScreenToggleHotKeys = ScreenToggleHotKeys.Select(o => o.ToString()).ToList();
+        }
+
+        private GlobalHotKey createScreenToggleHotKey(int screenIndex, string configuredHotKey)
+        {
+            if (!string.IsNullOrWhiteSpace(configuredHotKey))
+            {
+                try
+                {
+                    return GlobalHotkeyParser.Parse(configuredHotKey);
+                }
+                catch
+                {
+                }
+            }
+
+            var key = (Keys)((int)Keys.F13 + screenIndex);
+            return new GlobalHotKey(
+                KeyModifiers.NONE,
+                key,
+                $"Toggle Screen {screenIndex + 1}");
         }
 
         internal void LoadDefault()
