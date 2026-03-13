@@ -228,12 +228,16 @@ namespace Augustine.ScreenDimmer
         {
             StringBuilder sb = new StringBuilder();
             bool success = true;
-            success &= tryHookKeyAppendError(configuration.HotKeyIncreaseBrightness, ref sb);
-            success &= tryHookKeyAppendError(configuration.HotKeyDecreaseBrightness, ref sb);
-            success &= tryHookKeyAppendError(configuration.HotKeyBrighten, ref sb);
-            success &= tryHookKeyAppendError(configuration.HotKeyDim, ref sb);
-            success &= tryHookKeyAppendError(configuration.HotKeyForceOnTop, ref sb);
-            success &= tryHookKeyAppendError(configuration.HotKeyHalt, ref sb);
+            success &= tryHookKeysAppendError(new[]
+            {
+                configuration.HotKeyIncreaseBrightness,
+                configuration.HotKeyDecreaseBrightness,
+                configuration.HotKeyBrighten,
+                configuration.HotKeyDim,
+                configuration.HotKeyForceOnTop,
+                configuration.HotKeyHalt
+            }, ref sb);
+            success &= tryHookKeysAppendError(configuration.ScreenToggleHotKeys, ref sb);
             if (!success)
             {
                 notifyIcon1.ShowBalloonTip(0, "Cannot register one or more hotkeys.", sb.ToString(), ToolTipIcon.Warning);
@@ -252,6 +256,10 @@ namespace Augustine.ScreenDimmer
             helpWindow.AddHotKey(configuration.HotKeyDecreaseBrightness);
             helpWindow.AddHotKey(configuration.HotKeyForceOnTop);
             helpWindow.AddHotKey(configuration.HotKeyHalt);
+            foreach (var hotkey in configuration.ScreenToggleHotKeys)
+            {
+                helpWindow.AddHotKey(hotkey);
+            }
         }
 
         /// <summary>
@@ -262,6 +270,11 @@ namespace Augustine.ScreenDimmer
         /// <returns>true if successfully register the hotkey</returns>
         private bool tryHookKeyAppendError(GlobalHotKey hotkey, ref StringBuilder sb)
         {
+            if (hotkey == null)
+            {
+                return false;
+            }
+
             try
             {
                 hotkey.Register(Handle);
@@ -272,6 +285,21 @@ namespace Augustine.ScreenDimmer
                 sb.AppendLine(e.Message);
             }
             return false;
+        }
+
+        private bool tryHookKeysAppendError(IEnumerable<GlobalHotKey> hotkeys, ref StringBuilder sb)
+        {
+            if (hotkeys == null)
+            {
+                return true;
+            }
+
+            bool success = true;
+            foreach (var hotkey in hotkeys)
+            {
+                success &= tryHookKeyAppendError(hotkey, ref sb);
+            }
+            return success;
         }
 
         /// <summary>
@@ -320,6 +348,14 @@ namespace Augustine.ScreenDimmer
                     {
                         isContextClose = true;
                         Close();
+                    }
+                    else
+                    {
+                        var screenIndex = configuration.ScreenToggleHotKeys.FindIndex(o => o.Id == hotkeyId);
+                        if (screenIndex >= 0)
+                        {
+                            toggleScreenByIndex(screenIndex);
+                        }
                     }
                     break;
             }
@@ -554,6 +590,24 @@ namespace Augustine.ScreenDimmer
         #endregion
    
         #region screen management
+        private void toggleScreenByIndex(int screenIndex)
+        {
+            if (screenIndex < 0 || screenIndex >= ScreenExtended.AllScreens.Count || screenIndex >= 12)
+            {
+                return;
+            }
+
+            var targetScreen = ScreenExtended.AllScreens[screenIndex];
+            foreach (var control in checkboxPanel.Controls)
+            {
+                if (control is CheckboxButton cb && cb.Tag is ScreenExtended screen && screen.DeviceName == targetScreen.DeviceName)
+                {
+                    cb.Toggle();
+                    return;
+                }
+            }
+        }
+
         /// <summary>
         /// Sets the size and position of the form to cover the desired screen.
         /// Does nothing if the desired screen index is invalid.

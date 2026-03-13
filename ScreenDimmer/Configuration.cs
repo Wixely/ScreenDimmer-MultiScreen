@@ -70,6 +70,8 @@ namespace Augustine.ScreenDimmer
             set { HotKeyHalt = GlobalHotkeyParser.Parse(value); } }
         internal GlobalHotKey HotKeyHalt;
 
+        internal List<GlobalHotKey> ScreenToggleHotKeys;
+
         [DataMember(Name = "EnabledScreens")]
         internal List<string> EnabledScreens;
 
@@ -90,6 +92,7 @@ namespace Augustine.ScreenDimmer
             HotKeyDecreaseBrightness = new GlobalHotKey();
             HotKeyForceOnTop = new GlobalHotKey();
             HotKeyHalt = new GlobalHotKey();
+            ScreenToggleHotKeys = new List<GlobalHotKey>();
         }
 
         private void setHotkeyDescriptions()
@@ -100,6 +103,25 @@ namespace Augustine.ScreenDimmer
             HotKeyDecreaseBrightness.SetDescription("Decrease Brightness");
             HotKeyForceOnTop.SetDescription("Force on Top");
             HotKeyHalt.SetDescription("Immediately Halt Program");
+            for (int i = 0; i < ScreenToggleHotKeys.Count; i++)
+            {
+                ScreenToggleHotKeys[i].SetDescription($"Toggle Screen {i + 1}");
+            }
+        }
+
+        private void buildScreenToggleHotKeys()
+        {
+            ScreenToggleHotKeys = new List<GlobalHotKey>();
+            var supportedScreenCount = Math.Min(ScreenExtended.AllScreens.Count, 12);
+            for (int i = 0; i < supportedScreenCount; i++)
+            {
+                var key = (Keys)((int)Keys.F13 + i);
+                ScreenToggleHotKeys.Add(new GlobalHotKey(
+                    KeyModifiers.NONE,
+                    //KeyModifiers.MOD_WIN,
+                    key,
+                    $"Toggle Screen {i + 1}"));
+            }
         }
 
         internal void LoadDefault()
@@ -118,6 +140,7 @@ namespace Augustine.ScreenDimmer
             HotKeyIncreaseBrightness.SetKey(KeyModifiers.MOD_WIN | KeyModifiers.MOD_CONTROL, System.Windows.Forms.Keys.Up);
             HotKeyForceOnTop.SetKey(KeyModifiers.MOD_WIN | KeyModifiers.MOD_CONTROL, System.Windows.Forms.Keys.T);
             HotKeyHalt.SetKey(KeyModifiers.MOD_WIN | KeyModifiers.MOD_CONTROL, System.Windows.Forms.Keys.H);
+            buildScreenToggleHotKeys();
             setHotkeyDescriptions();
         }
 
@@ -132,12 +155,13 @@ namespace Augustine.ScreenDimmer
             {
                 throw new Exception("Cannot parse configuration from file.", ex);
             }
-            deserialized.setHotkeyDescriptions();
             // For the purpose of robustness. Non-positive fade duration will cause trouble.
             if (deserialized.FadeDuration < 1)
             {
                 deserialized.FadeDuration = 250;
             }
+            deserialized.buildScreenToggleHotKeys();
+            deserialized.setHotkeyDescriptions();
             return deserialized;
             //this.CurrentBrightness = deserialized.CurrentBrightness;
             //this.DimColor = deserialized.DimColor;
