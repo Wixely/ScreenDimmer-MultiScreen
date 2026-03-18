@@ -869,7 +869,7 @@ namespace Augustine.ScreenDimmer
 
             var topic = $"{MQTTService.AppBase}/{brightnessSensor.device.name}/{brightnessSensor.cmd_t.Trim('~')}";
                 
-            var publishResult = MQTTService.client.PublishAsync(topic, JsonConvert.SerializeObject(brightnessSensor.brightness));
+            var publishResult = MQTTService.client?.PublishAsync(topic, JsonConvert.SerializeObject(brightnessSensor.brightness));
         }
     }
 }

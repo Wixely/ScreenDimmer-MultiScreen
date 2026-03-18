@@ -71,10 +71,11 @@ namespace Augustine.ScreenDimmer
         internal GlobalHotKey HotKeyHalt;
 
         [DataMember(Name = "ScreenToggleHotKeys")]
-        private List<string> screenToggleHotKeys
+        private string[] screenToggleHotKeys
         {
-            get { return ScreenToggleHotKeys?.Select(o => o.ToString()).ToList(); }
-            set { ConfiguredScreenToggleHotKeys = value ?? new List<string>(); }
+            // Use an array so Json.NET calls the setter during load instead of populating a temporary list.
+            get { return ScreenToggleHotKeys?.Select(o => o.ToString()).ToArray(); }
+            set { ConfiguredScreenToggleHotKeys = value?.ToList() ?? new List<string>(); }
         }
         internal List<GlobalHotKey> ScreenToggleHotKeys;
         internal List<string> ConfiguredScreenToggleHotKeys;
@@ -194,6 +195,12 @@ namespace Augustine.ScreenDimmer
             {
                 throw new Exception("Cannot parse configuration from file.", ex);
             }
+
+            if (deserialized==null)
+            {
+                deserialized = new Configuration();
+            }
+
             deserialized.EnsureConfigurationState();
             // For the purpose of robustness. Non-positive fade duration will cause trouble.
             if (deserialized.FadeDuration < 1)

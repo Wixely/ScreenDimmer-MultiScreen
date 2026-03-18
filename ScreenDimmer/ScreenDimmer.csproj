@@ -17,6 +17,11 @@
     <Deterministic>False</Deterministic>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="build_verify\**" />
+    <EmbeddedResource Remove="build_verify\**" />
+    <None Remove="build_verify\**" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="HiveMQtt" Version="0.11.4" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
